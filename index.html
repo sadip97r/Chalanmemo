@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>স্মার্ট আড়ত চালান</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;700&display=swap');
+        
+        :root {
+            --bg-color: #f0f2f5; --card-color: #ffffff; --text-color: #333;
+            --primary-color: #c0392b; --primary-color-dark: #a53125;
+            --secondary-color: #27ae60; --border-color: #ddd; --shadow-color: rgba(0,0,0,0.1);
+            --input-bg-color: #f7f7f7; --header-bg: #e74c3c; --disabled-color: #bdc3c7;
+        }
+        body.dark-mode {
+            --bg-color: #121212; --card-color: #1e1e1e; --text-color: #e0e0e0;
+            --primary-color: #e57373; --primary-color-dark: #d32f2f;
+            --secondary-color: #81c784; --border-color: #444; --shadow-color: rgba(0,0,0,0.3);
+            --input-bg-color: #2c2c2c; --header-bg: #d32f2f; --disabled-color: #555;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Noto Sans Bengali', sans-serif; background-color: var(--bg-color); color: var(--text-color); line-height: 1.6; }
+        .container { max-width: 900px; margin: 0 auto; padding: 15px; }
+        .card { background-color: var(--card-color); border-radius: 12px; padding: 20px; margin-top: 20px; box-shadow: 0 4px 15px var(--shadow-color); border: 1px solid var(--border-color); }
+        fieldset { border: 1px solid var(--border-color); padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        fieldset legend { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 0 10px; margin-bottom: 10px; }
+        fieldset legend > span { font-weight: 700; color: var(--primary-color); }
+        .btn-link { background: none; border: none; color: var(--primary-color); cursor: pointer; font-family: inherit; font-size: 0.8em; text-decoration: underline; padding: 5px; font-weight: 500; }
+        
+        .grid-container { display: grid; grid-template-columns: 1fr; gap: 15px; }
+        @media (min-width: 768px) { .grid-container { grid-template-columns: 1fr 1fr; } }
+        .full-width { grid-column: 1 / -1; }
+        .form-group { margin-bottom: 10px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; font-size: 0.9em; }
+        input, textarea { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; background-color: var(--input-bg-color); color: var(--text-color); font-family: inherit; font-size: 1em; }
+        
+        #wizard-progress { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .step-indicator { width: 30px; height: 30px; border-radius: 50%; background-color: var(--disabled-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; transition: background-color 0.3s; position: relative; }
+        .step-indicator.active { background-color: var(--primary-color); }
+        .step-indicator.finished { background-color: var(--secondary-color); }
+        #wizard-progress .connector { flex-grow: 1; height: 4px; background-color: var(--disabled-color); margin: 0 5px; }
+        #wizard-progress .connector.active { background-color: var(--primary-color); }
+
+        .wizard-step { display: none; }
+        .wizard-step.active-step { display: block; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .nav-buttons { display: flex; justify-content: space-between; margin-top: 20px; }
+        .btn { display: inline-block; padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 1em; font-weight: 700; }
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-secondary { background-color: var(--secondary-color); color: white; }
+        .btn-neutral { background-color: var(--input-bg-color); color: var(--text-color); border: 1px solid var(--border-color); }
+        .btn-sm { padding: 8px 15px; font-size: 0.9em; }
+        
+        .app-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background-color: var(--card-color); border-bottom: 1px solid var(--border-color); box-shadow: 0 2px 5px var(--shadow-color); position: sticky; top: 0; z-index: 1000; }
+        .app-header h1 { font-size: 1.5em; color: var(--primary-color); }
+        .app-header-actions button { margin-left: 10px; }
+        #theme-toggle { cursor: pointer; background: none; border: 1px solid var(--border-color); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+        .view { display: none; }
+        .view.active { display: block; }
+        
+        #chalan-view { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--bg-color); z-index: 2000; overflow-y: auto; }
+        .chalan-header { display: flex; align-items: center; padding: 15px; background-color: var(--header-bg); color: white; position: sticky; top: 0; z-index: 10; }
+        .chalan-header .back-btn, .chalan-header .action-btn { background: rgba(255,255,255,0.2); border: 1px solid white; color: white; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.9em; }
+        .chalan-header .back-btn { margin-right: 15px; }
+        .chalan-header h2 { font-size: 1.3em; }
+        .chalan-actions { margin-left: auto; display: flex; gap: 10px; }
+        .chalan-body { padding: 10px; }
+        .chalan-paper { background: #fff; color: #000; max-width: 800px; margin: 10px auto; padding: 20px; border: 2px solid var(--primary-color); }
+        .chalan-paper-header { text-align: center; margin-bottom: 20px; }
+        .chalan-paper-header .chalan-title { display: inline-block; font-size: 1.6em; font-weight: 700; color: var(--primary-color); border: 2px solid var(--primary-color); padding: 2px 25px; margin-bottom: 15px; }
+        .chalan-paper-header .company-name { font-size: 2em; font-weight: 700; line-height: 1.2; }
+        .chalan-paper-header .company-details { font-size: 1em; line-height: 1.5; }
+        .chalan-customer-info { font-size: 1.1em; margin-bottom: 20px; }
+        .chalan-customer-info .info-row { display: flex; align-items: baseline; border-bottom: 1px solid #000; padding: 5px 0; }
+        .chalan-customer-info .info-label { width: 90px; font-weight: 700; }
+        .chalan-customer-info .info-value { flex-grow: 1; }
+        .chalan-customer-info .date-field { margin-left: auto; padding-left: 20px; }
+        .chalan-items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .chalan-items-table th, .chalan-items-table td { border: 1px solid #000; padding: 8px; text-align: right; }
+        
+        .chalan-items-table td:first-child { text-align: left; word-wrap: break-word; overflow-wrap: break-word; }
+       
+        .chalan-items-table th { background-color: #f2f2f2; text-align: center; font-weight: 700; }
+        .chalan-items-table tfoot td { border: none; border-top: 1px dotted #888; padding-top: 8px; font-weight: 700; }
+        .chalan-items-table tfoot .summary-label { text-align: right; }
+        .chalan-items-table tfoot .expense-label { font-weight: normal; }
+        .chalan-items-table tfoot .grand-total-row td { border-top: 2px solid #000; font-size: 1.15em; color: var(--primary-color); }
+        .chalan-footer { margin-top: 30px; }
+        .chalan-footer .in-words { margin-bottom: 40px; font-size: 1.1em; }
+        .chalan-footer .in-words span { font-weight: 700; }
+        .chalan-footer .signatures { display: flex; justify-content: space-between; }
+        .chalan-footer .signatures .sign { text-align: center; border-top: 1px solid #000; padding-top: 5px; width: 150px; }
+        .current-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; background-color: var(--input-bg-color); border-radius: 6px; margin-bottom: 8px; font-size: 0.9em; }
+        .current-item-remove { background: none; border: none; color: var(--primary-color); cursor: pointer; font-size: 1.2em; }
+        .chalan-list-item { background: var(--input-bg-color); padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .chalan-list-item-info { font-size: 0.9em; line-height: 1.5; }
+        .chalan-list-item-actions button { margin-top: 5px; width: 100%; }
+        
+        /* --- চূড়ান্ত সমাধান এখানে করা হয়েছে --- */
+        @media print {
+            body, html {
+                background: #fff !important;
+            }
+            
+            /* অপ্রয়োজনীয় সব অংশ প্রিন্ট থেকে বাদ দেওয়া হলো */
+            .no-print, .chalan-header, body > *:not(#chalan-view) {
+                display: none !important;
+            }
+            
+            .view:not(.printing) {
+                display: none !important;
+            }
+            
+            /* প্রিন্টের সময় chalan-view এবং এর ভেতরের সবকিছুর লেআউট ঠিক করা হলো */
+            #chalan-view.printing {
+                display: block !important;
+                position: static !important;
+                height: auto;
+                overflow: visible;
+                background-color: #fff !important;
+                padding: 0;
+                margin: 0;
+            }
+
+            .chalan-body {
+                padding: 0 !important;
+            }
+
+            .chalan-paper {
+                box-shadow: none !important;
+                margin: 0 auto !important;
+                max-width: 100% !important;
+                border: 1px solid #000 !important;
+                color: #000 !important; /* টেক্সট কালো করা হলো */
+                background: #fff !important; /* ব্যাকগ্রাউন্ড সাদা করা হলো */
+
+                /* --- সবচেয়ে গুরুত্বপূর্ণ অংশ --- */
+                /* এই কোড ব্রাউজারকে বাধ্য করবে আসল রঙ প্রিন্ট করার জন্য */
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+        /* --- সমাধান শেষ --- */
+
+    </style>
+</head>
+<body>
+
+    <!-- View 1: Chalan Creation -->
+    <div id="create-view" class="view active">
+        <header class="app-header no-print">
+            <h1>স্মার্ট আড়ত চালান</h1>
+            <div class="app-header-actions">
+                <button id="go-to-list-btn" class="btn btn-neutral btn-sm">তালিকা দেখুন</button>
+                <button id="theme-toggle" title="থিম পরিবর্তন করুন"><svg id="theme-icon-1" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg></button>
+            </div>
+        </header>
+        <main class="container">
+            <div class="card no-print">
+                <form id="chalan-wizard-form">
+                    <div id="wizard-progress"><div class="step-indicator" data-step="1">1</div><div class="connector"></div><div class="step-indicator" data-step="2">2</div><div class="connector"></div><div class="step-indicator" data-step="3">3</div><div class="connector"></div><div class="step-indicator" data-step="4">4</div></div>
+                    <div class="wizard-step" data-step="1"><fieldset><legend><span>প্রতিষ্ঠানের বিবরণ</span><button type="button" id="load-company-btn" class="btn-link">সংরক্ষিত তথ্য লোড করুন</button></legend><div class="grid-container"><div class="form-group full-width"><label for="company-name">প্রতিষ্ঠানের নাম</label><input type="text" id="company-name"></div><div class="form-group"><label for="company-prop">প্রোপ্রাইটর</label><input type="text" id="company-prop"></div><div class="form-group"><label for="company-mobile1">মোবাইল ১</label><input type="text" id="company-mobile1"></div><div class="form-group"><label for="company-mobile2">মোবাইল ২</label><input type="text" id="company-mobile2"></div><div class="form-group full-width"><label for="company-address">ঠিকানা</label><input type="text" id="company-address"></div></div></fieldset><fieldset><legend><span>ক্রেতার বিবরণ</span></legend><div class="grid-container"><div class="form-group"><label for="customer-name">নাম</label><input type="text" id="customer-name"></div><div class="form-group"><label for="customer-address">ঠিকানা</label><input type="text" id="customer-address"></div><div class="form-group"><label for="customer-via">মারফত</label><input type="text" id="customer-via"></div><div class="form-group"><label for="customer-vehicle">ড্রাম/ঝুড়ি/গাড়ি নং</label><input type="text" id="customer-vehicle"></div></div></fieldset><div class="nav-buttons"><button type="button" class="btn btn-primary next-btn">পরবর্তী →</button></div></div>
+                    <div class="wizard-step" data-step="2"><fieldset><legend><span>পণ্যের তালিকা</span></legend><div class="grid-container" style="align-items: flex-end;"><div class="form-group full-width"><label for="product-name">পণ্যের নাম</label><input type="text" id="product-name"></div><div class="form-group"><label for="weight">ওজন (কেজি)</label><input type="number" id="weight"></div><div class="form-group"><label for="price-per-kg">দর (প্রতি কেজি)</label><input type="number" id="price-per-kg"></div><button type="button" id="add-item-btn" class="btn btn-primary full-width" style="margin-top: 10px;">পণ্য যোগ করুন</button></div><div id="current-memo-items" style="margin-top:20px;"></div></fieldset><div class="nav-buttons"><button type="button" class="btn btn-neutral prev-btn">← পূর্ববর্তী</button><button type="button" class="btn btn-primary next-btn">পরবর্তী →</button></div></div>
+                    <div class="wizard-step" data-step="3"><fieldset><legend><span>খরচের হিসাব</span></legend><div class="grid-container" id="expense-inputs"><div class="form-group"><label for="exp-commission">কমিশন</label><input type="number" id="exp-commission" class="expense-field"></div><div class="form-group"><label for="exp-amanot">আমানত</label><input type="number" id="exp-amanot" class="expense-field"></div><div class="form-group"><label for="exp-mosque">মসজিদ</label><input type="number" id="exp-mosque" class="expense-field"></div><div class="form-group"><label for="exp-coolie">কুলি</label><input type="number" id="exp-coolie" class="expense-field"></div><div class="form-group"><label for="exp-water">পানি</label><input type="number" id="exp-water" class="expense-field"></div><div class="form-group"><label for="exp-van">ভ্যান ভাড়া</label><input type="number" id="exp-van" class="expense-field"></div><div class="form-group"><label for="exp-truck">গাড়ী ভাড়া</label><input type="number" id="exp-truck" class="expense-field"></div><div class="form-group"><label for="exp-parking">গাড়ী পার্কিং</label><input type="number" id="exp-parking" class="expense-field"></div><div class="form-group"><label for="exp-ice">বরফ</label><input type="number" id="exp-ice" class="expense-field"></div><div class="form-group"><label for="exp-khajna">খাজনা</label><input type="number" id="exp-khajna" class="expense-field"></div><div class="form-group"><label for="exp-paper">কাজের</label><input type="number" id="exp-paper" class="expense-field"></div><div class="form-group"><label for="exp-labour">লেবার</label><input type="number" id="exp-labour" class="expense-field"></div></div></fieldset><div class="nav-buttons"><button type="button" class="btn btn-neutral prev-btn">← পূর্ববর্তী</button><button type="button" class="btn btn-primary next-btn">পরবর্তী →</button></div></div>
+                    <div class="wizard-step" data-step="4"><fieldset><legend><span> চূড়ান্ত হিসাব</span></legend><div class="summary-display"><div class="summary-row"><span>কাঁচা বিক্রি:</span><span id="summary-raw-sale">০.০০</span></div><div class="summary-row"><span>(-) মোট খরচ:</span><span id="summary-total-expense">০.০০</span></div><div class="summary-row final"><span>পাকা বিক্রি:</span><span id="summary-net-sale">০.০০</span></div></div></fieldset><div class="nav-buttons"><button type="button" class="btn btn-neutral prev-btn">← পূর্ববর্তী</button><button type="button" id="save-chalan-btn" class="btn btn-secondary">চালান সংরক্ষণ করুন</button></div></div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <!-- View 2: Chalan List -->
+    <div id="list-view" class="view">
+        <header class="app-header no-print">
+            <h1>সংরক্ষিত চালানের তালিকা</h1>
+            <div class="app-header-actions">
+                <button id="go-to-create-btn" class="btn btn-primary btn-sm">নতুন চালান</button>
+            </div>
+        </header>
+        <main class="container">
+             <div class="card no-print">
+                <div id="chalan-list"><p>এখনো কোনো চালান সংরক্ষণ করা হয়নি।</p></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- View 3: Chalan Details (Pop-up like) -->
+    <div id="chalan-view" class="view">
+        <div class="chalan-header no-print">
+            <button class="back-btn action-btn" title="ফিরে যান">← ফিরে যান</button>
+            <h2>চালানের বিবরণ</h2>
+            <div class="chalan-actions">
+                <button id="save-gallery-btn" class="action-btn">গ্যালারিতে সেভ</button>
+                <button id="print-btn" class="action-btn">প্রিন্ট / PDF</button>
+            </div>
+        </div>
+        <div class="chalan-body"><div class="chalan-paper" id="chalan-content-area"></div></div>
+    </div>
+    
+    <!-- External library for saving as image -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        let currentStep = 1;
+        const totalSteps = 4;
+        const form = document.getElementById('chalan-wizard-form');
+        const loadCompanyBtn = document.getElementById('load-company-btn');
+        const goToListViewBtn = document.getElementById('go-to-list-btn');
+        const goToCreateBtn = document.getElementById('go-to-create-btn');
+
+        const companyInputs = { name: document.getElementById('company-name'), prop: document.getElementById('company-prop'), mobile1: document.getElementById('company-mobile1'), mobile2: document.getElementById('company-mobile2'), address: document.getElementById('company-address'), };
+        const customerInputs = { name: document.getElementById('customer-name'), address: document.getElementById('customer-address'), via: document.getElementById('customer-via'), vehicle: document.getElementById('customer-vehicle'), };
+        const productInputs = { name: document.getElementById('product-name'), weight: document.getElementById('weight'), price: document.getElementById('price-per-kg'), };
+        const addItemBtn = document.getElementById('add-item-btn');
+        const saveChalanBtn = document.getElementById('save-chalan-btn');
+        const currentItemsContainer = document.getElementById('current-memo-items');
+        const chalanListContainer = document.getElementById('chalan-list');
+        let currentItems = [];
+        
+        const toBangla = (num, fractions = 2) => (typeof num === 'number' ? num : 0).toLocaleString('bn-BD', { minimumFractionDigits: fractions, maximumFractionDigits: fractions });
+        
+        function numberToWordsBangla(num) {
+            if (num === 0) return 'শূন্য';
+            const units = ['', 'এক', 'দুই', 'তিন', 'চার', 'পাঁচ', 'ছয়', 'সাত', 'আট', 'নয়'];
+            const teens = ['দশ', 'এগার', 'বার', 'তের', 'চৌদ্দ', 'পনের', 'ষোল', 'সতের', 'আঠার', 'ঊনিশ'];
+            const tens = ['', 'দশ', 'বিশ', 'ত্রিশ', 'চল্লিশ', 'পঞ্চাশ', 'ষাট', 'সত্তর', 'আশি', 'নব্বই'];
+            const scales = ['', 'হাজার', 'লাখ', 'কোটি'];
+            function convertLessThanThousand(n) { if (n === 0) return ''; let word = ''; if (n >= 100) { word += units[Math.floor(n / 100)] + ' শত '; n %= 100; } if (n >= 20) { word += tens[Math.floor(n / 10)] + ' '; n %= 10; }  else if (n >= 10) { return word + teens[n - 10]; } if (n > 0) { word += units[n]; } return word.trim(); }
+            let number = Math.floor(num); if (number === 0) return 'শূন্য';
+            let words = []; let scaleIndex = 0;
+            while (number > 0) { let chunk; if (scaleIndex === 0) { chunk = number % 1000; number = Math.floor(number / 1000); } else { chunk = number % 100; number = Math.floor(number / 100); } if (chunk > 0) { words.unshift(convertLessThanThousand(chunk) + (scales[scaleIndex] ? ' ' + scales[scaleIndex] : '')); } scaleIndex++; if (scaleIndex > 3) scaleIndex = 1; }
+            return words.join(' ').trim();
+        }
+
+        function calculateAllTotals() {
+            const summaryRawSale = document.getElementById('summary-raw-sale');
+            const summaryTotalExpense = document.getElementById('summary-total-expense');
+            const summaryNetSale = document.getElementById('summary-net-sale');
+            const rawSale = currentItems.reduce((acc, item) => acc + item.total, 0);
+            let totalExpense = 0;
+            document.querySelectorAll('.expense-field').forEach(input => { totalExpense += parseFloat(input.value) || 0; });
+            const netSale = rawSale - totalExpense;
+            summaryRawSale.textContent = toBangla(rawSale);
+            summaryTotalExpense.textContent = toBangla(totalExpense);
+            summaryNetSale.textContent = toBangla(netSale);
+        }
+
+        function renderCurrentItems() {
+            currentItemsContainer.innerHTML = '';
+            if (currentItems.length === 0) { currentItemsContainer.innerHTML = '<p style="text-align:center; padding:10px; color: #888;">এখনো কোনো পণ্য যোগ করা হয়নি।</p>'; return; }
+            currentItems.forEach((item, index) => { const itemDiv = document.createElement('div'); itemDiv.className = 'current-item'; itemDiv.innerHTML = `<span>${item.product} (${toBangla(item.weight)} কেজি x ${toBangla(item.price)}) = ${toBangla(item.total)}</span><button class="current-item-remove" data-index="${index}" title="মুছুন">×</button>`; currentItemsContainer.appendChild(itemDiv); });
+            calculateAllTotals();
+        }
+
+        function handleAddItem() {
+            const product = productInputs.name.value.trim(); const weight = parseFloat(productInputs.weight.value); const price = parseFloat(productInputs.price.value);
+            if (!product || !weight || !price) { alert('পণ্যের নাম, ওজন এবং দর সঠিকভাবে পূরণ করুন।'); return; }
+            currentItems.push({ product, weight, price, total: weight * price });
+            productInputs.name.value = productInputs.weight.value = productInputs.price.value = '';
+            productInputs.name.focus();
+            renderCurrentItems();
+        }
+        
+        function saveCompanyDetails() { const details = {}; for (const key in companyInputs) { details[key] = companyInputs[key].value; } localStorage.setItem('companyDetails', JSON.stringify(details)); }
+        function loadCompanyDetails() { const details = JSON.parse(localStorage.getItem('companyDetails')); if (details) { for (const key in details) { if (companyInputs[key]) { companyInputs[key].value = details[key]; } } alert('সংরক্ষিত তথ্য লোড করা হয়েছে।'); } else { alert('কোনো সংরক্ষিত তথ্য পাওয়া যায়নি।'); } }
+        
+        function handleSaveChalan() {
+            if (currentItems.length === 0) { alert('চালান তৈরির জন্য অন্তত একটি পণ্য যোগ করুন।'); return; }
+            saveCompanyDetails();
+            const rawSale = currentItems.reduce((acc, item) => acc + item.total, 0); const expenses = {}; let totalExpense = 0;
+            document.querySelectorAll('.expense-field').forEach(input => { const value = parseFloat(input.value) || 0; if (value > 0) { const label = input.parentElement.querySelector('label').innerText; expenses[label] = value; } totalExpense += value; });
+            const netSale = rawSale - totalExpense;
+            const chalanData = { id: Date.now(), date: new Date().toISOString(), company: JSON.parse(localStorage.getItem('companyDetails')), customer: { name: customerInputs.name.value, address: customerInputs.address.value, via: customerInputs.via.value, vehicle: customerInputs.vehicle.value, }, items: currentItems, expenses, calculations: { rawSale, totalExpense, netSale }, netSaleInWords: numberToWordsBangla(netSale) };
+            const chalans = JSON.parse(localStorage.getItem('chalans')) || [];
+            chalans.unshift(chalanData);
+            localStorage.setItem('chalans', JSON.stringify(chalans));
+            alert('চালান সফলভাবে সংরক্ষণ করা হয়েছে!');
+            resetWizard(); renderChalanList();
+            showView('list-view'); // Go to list view after saving
+        }
+
+        function renderChalanList() {
+            chalanListContainer.innerHTML = ''; const chalans = JSON.parse(localStorage.getItem('chalans')) || [];
+            if(chalans.length === 0) { chalanListContainer.innerHTML = '<p>এখনো কোনো চালান সংরক্ষণ করা হয়নি।</p>'; return; }
+            chalans.forEach(chalan => {
+                const date = new Date(chalan.date).toLocaleDateString('bn-BD');
+                const card = document.createElement('div');
+                card.className = 'chalan-list-item';
+                card.innerHTML = `<div class="chalan-list-item-info"><strong>চালান নং: ${chalan.id}</strong><br>তারিখ: ${date} | ক্রেতা: ${chalan.customer.name || 'N/A'}<br>মোট: ${toBangla(chalan.calculations.netSale)}</div><div class="chalan-list-item-actions"><button onclick="showChalanDetails(${chalan.id})" class="btn btn-neutral btn-sm">দেখুন</button><button onclick="deleteChalan(${chalan.id})" class="btn btn-primary btn-sm">মুছুন</button></div>`;
+                chalanListContainer.appendChild(card);
+            });
+        }
+        
+        window.showChalanDetails = function(id) {
+            const chalanView = document.getElementById('chalan-view'); const chalanContentArea = document.getElementById('chalan-content-area');
+            const chalans = JSON.parse(localStorage.getItem('chalans')) || []; const chalan = chalans.find(c => c.id === id);
+            if (!chalan) return;
+            
+            chalanContentArea.dataset.chalanId = id;
+
+            let itemsHtml = ''; chalan.items.forEach(item => { itemsHtml += `<tr><td>${item.product}</td><td>${toBangla(item.weight)}</td><td>${toBangla(item.price)}</td><td>${toBangla(item.total)}</td></tr>`; });
+            let summaryRowsHtml = `<tr><td colspan="3" class="summary-label">কাঁচা বিক্রি:</td><td>${toBangla(chalan.calculations.rawSale)}</td></tr>`;
+            for (const key in chalan.expenses) { summaryRowsHtml += `<tr><td colspan="3" class="summary-label expense-label">${key}:</td><td>-${toBangla(chalan.expenses[key], 0)}</td></tr>`; }
+            summaryRowsHtml += `<tr class="grand-total-row"><td colspan="3" class="summary-label">পাকা বিক্রি:</td><td>${toBangla(chalan.calculations.netSale)}</td></tr>`;
+            chalanContentArea.innerHTML = `<header class="chalan-paper-header"><div class="chalan-title">চালান</div><div class="company-name">${chalan.company.name || ''}</div><div class="company-details">প্রোঃ ${chalan.company.prop || ''} | মোবাইলঃ ${chalan.company.mobile1 || ''} ${chalan.company.mobile2 ? ', '+chalan.company.mobile2 : ''}<br>${chalan.company.address || ''}</div></header><section class="chalan-customer-info"><div class="info-row"><span class="info-label">নামঃ</span><span class="info-value">${chalan.customer.name || ''}</span><span class="date-field"><b>তারিখঃ</b> ${new Date(chalan.date).toLocaleDateString('bn-BD')}</span></div><div class="info-row"><span class="info-label">ঠিকানাঃ</span><span class="info-value">${chalan.customer.address || ''}</span></div><div class="info-row"><span class="info-label">ড্রাম/গাড়িঃ</span><span class="info-value">${chalan.customer.vehicle || ''}</span></div><div class="info-row"><span class="info-label">মারফতঃ</span><span class="info-value">${chalan.customer.via || ''}</span></div></section><table class="chalan-items-table"><thead><tr><th>বিবরণ</th><th>ওজন</th><th>দর</th><th>মোট টাকা</th></tr></thead><tbody>${itemsHtml}</tbody><tfoot>${summaryRowsHtml}</tfoot></table><footer class="chalan-footer"><div class="in-words">কথায়ঃ <span>${chalan.netSaleInWords} টাকা মাত্র।</span></div><div class="signatures"><div class="sign">ক্রেতার স্বাক্ষর</div><div class="sign">বিক্রেতার স্বাক্ষর</div></div></footer>`;
+            showView('chalan-view');
+        }
+
+        window.deleteChalan = function(id) {
+            if (confirm('আপনি কি এই চালানটি মুছে ফেলতে চান?')) {
+                let chalans = JSON.parse(localStorage.getItem('chalans')) || [];
+                chalans = chalans.filter(c => c.id !== id);
+                localStorage.setItem('chalans', JSON.stringify(chalans));
+                renderChalanList();
+            }
+        }
+        
+        function showView(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+        }
+
+        function showStep(stepNumber) {
+            document.querySelectorAll('.wizard-step').forEach(step => step.classList.remove('active-step'));
+            document.querySelector(`.wizard-step[data-step="${stepNumber}"]`).classList.add('active-step');
+            document.querySelectorAll('#wizard-progress .step-indicator').forEach((indicator, index) => { indicator.classList.remove('active', 'finished'); if (index + 1 < stepNumber) { indicator.classList.add('finished'); } else if (index + 1 === stepNumber) { indicator.classList.add('active'); } });
+            document.querySelectorAll('#wizard-progress .connector').forEach((connector, index) => { connector.classList.remove('active'); if (index + 1 < stepNumber) { connector.classList.add('active'); } });
+            if (stepNumber === totalSteps) { calculateAllTotals(); }
+        }
+
+        function validateStep(step) {
+            if (step === 1) { if (companyInputs.name.value.trim() === '') { alert('অনুগ্রহ করে প্রতিষ্ঠানের নাম পূরণ করুন।'); companyInputs.name.focus(); return false; } }
+            if (step === 2) { if (currentItems.length === 0) { alert('চালান তৈরির জন্য অন্তত একটি পণ্য যোগ করুন।'); return false; } }
+            return true;
+        }
+
+        function resetWizard() {
+            form.reset(); currentItems = []; renderCurrentItems(); currentStep = 1; showStep(currentStep);
+        }
+
+        document.querySelectorAll('.next-btn').forEach(button => { button.addEventListener('click', () => { if (validateStep(currentStep) && currentStep < totalSteps) { currentStep++; showStep(currentStep); } }); });
+        document.querySelectorAll('.prev-btn').forEach(button => { button.addEventListener('click', () => { if (currentStep > 1) { currentStep--; showStep(currentStep); } }); });
+        
+        addItemBtn.addEventListener('click', handleAddItem);
+        loadCompanyBtn.addEventListener('click', loadCompanyDetails);
+        currentItemsContainer.addEventListener('click', (e) => { if (e.target.classList.contains('current-item-remove')) { currentItems.splice(e.target.dataset.index, 1); renderCurrentItems(); } });
+        document.getElementById('expense-inputs').addEventListener('input', calculateAllTotals);
+        saveChalanBtn.addEventListener('click', handleSaveChalan);
+        
+        goToListViewBtn.addEventListener('click', () => showView('list-view'));
+        goToCreateBtn.addEventListener('click', () => { resetWizard(); showView('create-view'); });
+        document.querySelector('#chalan-view .back-btn').addEventListener('click', () => showView('list-view'));
+        
+        document.getElementById('print-btn').addEventListener('click', () => {
+            const chalanView = document.getElementById('chalan-view');
+            chalanView.classList.add('printing');
+            window.print();
+            
+            // প্রিন্ট ডায়ালগ বন্ধ হওয়ার পর ক্লাসটি মুছে ফেলার জন্য একটি ছোট ডিলে দেওয়া যেতে পারে
+            setTimeout(() => {
+                chalanView.classList.remove('printing');
+            }, 500);
+        });
+
+        document.getElementById('save-gallery-btn').addEventListener('click', () => {
+            const saveBtn = document.getElementById('save-gallery-btn');
+            const chalanContent = document.getElementById('chalan-content-area');
+            const chalanId = chalanContent.dataset.chalanId || Date.now();
+            const filename = `chalan-${chalanId}.png`;
+
+            const originalText = saveBtn.innerText;
+            saveBtn.innerText = 'প্রসেসিং...';
+            saveBtn.disabled = true;
+
+            html2canvas(chalanContent, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff'
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = filename;
+                link.href = canvas.toDataURL('image/png');
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                saveBtn.innerText = originalText;
+                saveBtn.disabled = false;
+                alert('চালানের ছবি সফলভাবে ডাউনলোড হয়েছে!');
+
+            }).catch(err => {
+                console.error('Error creating image:', err);
+                alert('দুঃখিত, ছবি তৈরি করতে একটি সমস্যা হয়েছে।');
+                saveBtn.innerText = originalText;
+                saveBtn.disabled = false;
+            });
+        });
+        
+        document.getElementById('theme-toggle').addEventListener('click', () => document.body.classList.toggle('dark-mode'));
+
+        renderChalanList(); showStep(currentStep); renderCurrentItems();
+    });
+    </script>
+</body>
+</html>
